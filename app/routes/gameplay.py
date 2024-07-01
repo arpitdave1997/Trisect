@@ -1,6 +1,8 @@
 import json
 from fastapi import APIRouter, WebSocket
-from app.static.constants import GameplayEvents, GameplayType
+from app.common.enums import GameplayEvents, GameplayType, GameplayStatus
+from app.common.constants import GameplaySessionObject, BOT_USER_ID, OFFLINE_USER_ID
+from app.common.helpers import GameplayHelper
 from app.database.supabase import Supabase
 
 gameplayRouter = APIRouter(tags=['Gameplay APIs'])
@@ -11,16 +13,19 @@ dbClient = Supabase.initialize()
 async def gameplayEvents(webSocket: WebSocket):
     await webSocket.accept()
     try:
-        eventData = json.loads(await webSocket.receive_text())
-        eventCase = eventData.get('case')
+        while True:
+            eventData: dict = await webSocket.receive_json()
+            eventCase: str = eventData.get('case')
 
-        match eventCase:
-            case GameplayEvents.INITIATE_SESSION.value:
-                GameplayHandler.initiateSession(webSocket, eventData)
-            case GameplayEvents.RETRIEVE_SESSION.value:
-                GameplayHandler.retrieveSession(webSocket, eventData)
-            case _:
-                raise Exception
+            match eventCase:
+                case GameplayEvents.INITIATE_SESSION.value:
+                    await GameplayHandler.initiateSession(webSocket, eventData)
+                case GameplayEvents.USE_SESSION.value:
+                    await GameplayHandler.useSession(webSocket, eventData)
+                case GameplayEvents.TERMINATE_SESSION.value:
+                    GameplayHandler.terminateSession(webSocket, eventData)
+                case _:
+                    raise Exception
     except Exception as e:
         await webSocket.send_json({'status':False, 'message': e})
     finally:
@@ -29,32 +34,41 @@ async def gameplayEvents(webSocket: WebSocket):
 class GameplayHandler:
 
     @staticmethod
-    def initiateSession(webSocket: WebSocket, eventData: dict):
-        try:
-            sessionId = None
+    async def initiateSession(webSocket: WebSocket, eventData: dict):
+        gameplayObject = GameplaySessionObject()
 
-            gameplayType = eventData.get('gameplay_type')
-            userOneId = eventData.get('user_one')
-            userTwoId = eventData.get('user_two', None)
+        gameplayObject.type = eventData.get('type')
+        gameplayObject.status = GameplayStatus.OPEN.value
+        gameplayObject.userOneId = GameplayHelper.encodeUserId(eventData.get('device_identifier'))
+        gameplayObject.nextAction = gameplayObject.userOneId
 
-            while True:
-                match gameplayType:
-                    case GameplayType.ONE_VS_BOT.value:
-                        pass
-                    case GameplayType.TWO_VS_OFFLINE.value:
-                        pass
-                    case GameplayType.TWO_VS_ONLINE.value:
-                        pass
-                    case GameplayType.TWO_VS_RANDOM.value:
-                        pass
-                    case _:
-                        raise Exception
-
-        except Exception as e:
-            raise Exception(e)
+        match gameplayObject.type:
+            case GameplayType.ONE_VS_BOT.value:
+                gameplayObject.userTwoId = GameplayHelper.encodeUserId(BOT_USER_ID)
+            case GameplayType.TWO_VS_OFFLINE.value:
+                gameplayObject.userTwoId = GameplayHelper.encodeUserId(OFFLINE_USER_ID)
+            case GameplayType.TWO_VS_ONLINE.value:
+                pass
+            case GameplayType.TWO_VS_RANDOM.value:
+                pass
+        
+        gameplayObject.sessionId = GameplayHelper.createSession(gameplayObject)
+        await webSocket.send_json(gameplayObject.toJson())
+        return
 
     @staticmethod
-    def retrieveSession(webSocket: WebSocket, eventData: dict):
+    async def useSession(webSocket: WebSocket, eventData: dict):
+        sessionValidity, gameplayObject = GameplayHelper.checkSessionValidity(eventData)
+        if not sessionValidity:
+            raise Exception()
+        
+        gameplayObject = GameplayHelper.processNextAction(gameplayObject, eventData.get('gameplay'))
+        GameplayHelper.updateSession(gameplayObject)
+        await webSocket.send_json(gameplayObject.toJson())
+        return 
+    
+    @staticmethod
+    def terminateSession(webSocket: WebSocket, eventData: dict):
         return {
             'response': 'Response Message'
         }
