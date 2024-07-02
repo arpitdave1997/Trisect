@@ -25,9 +25,9 @@ async def gameplayEvents(webSocket: WebSocket):
                 case GameplayEvents.TERMINATE_SESSION.value:
                     GameplayHandler.terminateSession(webSocket, eventData)
                 case _:
-                    raise Exception
+                    raise Exception('[GAMEPLAY] : Incorrect Event Case passed')
     except Exception as e:
-        await webSocket.send_json({'status':False, 'message': e})
+        await webSocket.send_json({'status': 'error', 'message': str(e)})
     finally:
         await webSocket.close()
 
@@ -60,7 +60,7 @@ class GameplayHandler:
     async def useSession(webSocket: WebSocket, eventData: dict):
         sessionValidity, gameplayObject = GameplayHelper.checkSessionValidity(eventData)
         if not sessionValidity:
-            raise Exception()
+            raise Exception('[GAMEPLAY] : Gameplay Session is either Closed or Invalid')
         
         gameplayObject = GameplayHelper.processNextAction(gameplayObject, eventData.get('gameplay'))
         GameplayHelper.updateSession(gameplayObject)

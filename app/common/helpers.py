@@ -11,14 +11,15 @@ class GameplayHelper:
     def createSession(gameplayObject: GameplaySessionObject):
         dbResponse = dbClient.table('gameplay').insert(gameplayObject.toDbObject()).execute()
         if dbResponse.count == 0:
-            raise Exception()
+            raise Exception('[GAMEPLAY] : Issue while creating new Session record in DB')
         
         return dbResponse.data[0]['session_id']
         
+    @staticmethod
     def updateSession(gameplayObject: GameplaySessionObject):
         dbResponse = dbClient.table('gameplay').update(gameplayObject.toDbObject()).eq('session_id', gameplayObject.sessionId).execute()
         if dbResponse.count == 0:
-            raise Exception()
+            raise Exception('[GAMEPLAY] : Issue while updating existing Session record in DB')
         
         return
 
@@ -28,15 +29,15 @@ class GameplayHelper:
         sessionId = eventJson.get('session_id')
         currentAction = eventJson.get('current_action')
         if not sessionId:
-            raise Exception()
+            raise Exception('[GAMEPLAY] : Session ID is not passed')
         
         dbResponse = dbClient.table('gameplay').select('*').eq('session_id', sessionId).execute()
         if dbResponse.count == 0:
-            raise Exception()
+            raise Exception('[GAMEPLAY] : No record present with this Session ID')
         
         gameplayObject: GameplaySessionObject = GameplayHelper.mapGameplayObject(dbResponse.data[0])
-        if gameplayObject.status != GameplayStatus.OPEN.value and gameplayObject.result != None and currentAction != gameplayObject.nextAction:
-            raise Exception()
+        if gameplayObject.status != GameplayStatus.OPEN.value or gameplayObject.result != None or currentAction != gameplayObject.nextAction:
+            raise Exception('[GAMEPLAY] : Session is either closed, expired or it is not your turn')
         
         return sessionValidity, gameplayObject
 
