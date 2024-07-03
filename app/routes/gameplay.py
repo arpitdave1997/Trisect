@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, WebSocket
-from app.common.enums import GameplayEvents, GameplayType, GameplayStatus
+from app.common.enums import GameplayEvents, GameplayType, GameplayStatus, ExceptionLogCodes
 from app.common.constants import GameplaySessionObject, BOT_USER_ID, OFFLINE_USER_ID
 from app.common.helpers import GameplayHelper
 from app.database.supabase import Supabase
@@ -25,7 +25,7 @@ async def gameplayEvents(webSocket: WebSocket):
                 case GameplayEvents.TERMINATE_SESSION.value:
                     GameplayHandler.terminateSession(webSocket, eventData)
                 case _:
-                    raise Exception('[GAMEPLAY] : Incorrect Event Case passed')
+                    raise Exception(ExceptionLogCodes.INCORRECT_EVENT_CASE.value)
     except Exception as e:
         await webSocket.send_json({'status': 'error', 'message': str(e)})
     finally:
@@ -60,7 +60,7 @@ class GameplayHandler:
     async def useSession(webSocket: WebSocket, eventData: dict):
         sessionValidity, gameplayObject = GameplayHelper.checkSessionValidity(eventData)
         if not sessionValidity:
-            raise Exception('[GAMEPLAY] : Gameplay Session is either Closed or Invalid')
+            raise Exception(ExceptionLogCodes.EXPIRED_SESSION.value)
         
         gameplayObject = GameplayHelper.processNextAction(gameplayObject, eventData.get('gameplay'))
         GameplayHelper.updateSession(gameplayObject)

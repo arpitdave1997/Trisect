@@ -1,7 +1,7 @@
 import base64
 from app.database.supabase import Supabase
 from app.common.constants import GameplaySessionObject
-from app.common.enums import GameplayStatus
+from app.common.enums import GameplayStatus, ExceptionLogCodes
 
 dbClient = Supabase.initialize()
 
@@ -11,7 +11,7 @@ class GameplayHelper:
     def createSession(gameplayObject: GameplaySessionObject):
         dbResponse = dbClient.table('gameplay').insert(gameplayObject.toDbObject()).execute()
         if dbResponse.count == 0:
-            raise Exception('[GAMEPLAY] : Issue while creating new Session record in DB')
+            raise Exception(ExceptionLogCodes.EXCEPTION_CREATE_SESSION.value)
         
         return dbResponse.data[0]['session_id']
         
@@ -19,7 +19,7 @@ class GameplayHelper:
     def updateSession(gameplayObject: GameplaySessionObject):
         dbResponse = dbClient.table('gameplay').update(gameplayObject.toDbObject()).eq('session_id', gameplayObject.sessionId).execute()
         if dbResponse.count == 0:
-            raise Exception('[GAMEPLAY] : Issue while updating existing Session record in DB')
+            raise Exception(ExceptionLogCodes.EXCEPTION_UPDATE_SESSION.value)
         
         return
 
@@ -29,15 +29,15 @@ class GameplayHelper:
         sessionId = eventJson.get('session_id')
         currentAction = eventJson.get('current_action')
         if not sessionId:
-            raise Exception('[GAMEPLAY] : Session ID is not passed')
+            raise Exception(ExceptionLogCodes.INCORRECT_SESSION_ID.value)
         
         dbResponse = dbClient.table('gameplay').select('*').eq('session_id', sessionId).execute()
         if dbResponse.count == 0:
-            raise Exception('[GAMEPLAY] : No record present with this Session ID')
+            raise Exception(ExceptionLogCodes.INCORRECT_SESSION_ID.value)
         
         gameplayObject: GameplaySessionObject = GameplayHelper.mapGameplayObject(dbResponse.data[0])
         if gameplayObject.status != GameplayStatus.OPEN.value or gameplayObject.result != None or currentAction != gameplayObject.nextAction:
-            raise Exception('[GAMEPLAY] : Session is either closed, expired or it is not your turn')
+            raise Exception(ExceptionLogCodes.EXPIRED_SESSION.value)
         
         return sessionValidity, gameplayObject
 
