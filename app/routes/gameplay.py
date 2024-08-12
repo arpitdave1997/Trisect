@@ -1,5 +1,5 @@
 import json
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.common.enums import GameplayEvents, GameplayType, GameplayStatus, ExceptionLogCodes
 from app.common.constants import GameplaySessionObject, BOT_USER_ID, OFFLINE_USER_ID
 from app.common.helpers import GameplayHelper
@@ -26,10 +26,12 @@ async def gameplayEvents(webSocket: WebSocket):
                     GameplayHandler.terminateSession(webSocket, eventData)
                 case _:
                     raise Exception(ExceptionLogCodes.INCORRECT_EVENT_CASE.value)
+    except WebSocketDisconnect as w:
+        pass
     except Exception as e:
         await webSocket.send_json({'status': 'error', 'message': str(e)})
-    finally:
         await webSocket.close()
+
 
 class GameplayHandler:
 
@@ -62,7 +64,7 @@ class GameplayHandler:
         if not sessionValidity:
             raise Exception(ExceptionLogCodes.EXPIRED_SESSION.value)
         
-        gameplayObject = GameplayHelper.processNextAction(gameplayObject, eventData.get('gameplay'))
+        gameplayObject = GameplayHelper.processNextAction(gameplayObject, eventData.get('action_position'))
         GameplayHelper.updateSession(gameplayObject)
         await webSocket.send_json(gameplayObject.toJson())
         return 

@@ -36,7 +36,7 @@ class GameplayHelper:
             raise Exception(ExceptionLogCodes.INCORRECT_SESSION_ID.value)
         
         gameplayObject: GameplaySessionObject = GameplayHelper.mapGameplayObject(dbResponse.data[0])
-        if gameplayObject.status != GameplayStatus.OPEN.value or gameplayObject.result != None or currentAction != gameplayObject.nextAction:
+        if gameplayObject.status != GameplayStatus.OPEN.value or currentAction != gameplayObject.nextAction:
             raise Exception(ExceptionLogCodes.EXPIRED_SESSION.value)
         
         return sessionValidity, gameplayObject
@@ -58,21 +58,49 @@ class GameplayHelper:
         return gameplayObject
     
     @staticmethod
-    def processNextAction(gameplayObject: GameplaySessionObject, gameplay: list[str]):
-        if  (gameplay[0].startswith(gameplayObject.nextAction) and gameplay[1].startswith(gameplayObject.nextAction) and gameplay[2].startswith(gameplayObject.nextAction)) or \
-            (gameplay[3].startswith(gameplayObject.nextAction) and gameplay[4].startswith(gameplayObject.nextAction) and gameplay[5].startswith(gameplayObject.nextAction)) or \
-            (gameplay[6].startswith(gameplayObject.nextAction) and gameplay[7].startswith(gameplayObject.nextAction) and gameplay[8].startswith(gameplayObject.nextAction)) or \
-            (gameplay[0].startswith(gameplayObject.nextAction) and gameplay[3].startswith(gameplayObject.nextAction) and gameplay[6].startswith(gameplayObject.nextAction)) or \
-            (gameplay[1].startswith(gameplayObject.nextAction) and gameplay[4].startswith(gameplayObject.nextAction) and gameplay[7].startswith(gameplayObject.nextAction)) or \
-            (gameplay[2].startswith(gameplayObject.nextAction) and gameplay[5].startswith(gameplayObject.nextAction) and gameplay[8].startswith(gameplayObject.nextAction)) or \
-            (gameplay[0].startswith(gameplayObject.nextAction) and gameplay[4].startswith(gameplayObject.nextAction) and gameplay[8].startswith(gameplayObject.nextAction)) or \
-            (gameplay[2].startswith(gameplayObject.nextAction) and gameplay[4].startswith(gameplayObject.nextAction) and gameplay[6].startswith(gameplayObject.nextAction)):
+    def processNextAction(gameplayObject: GameplaySessionObject, actionPosition: str):
+        actionUserType = "A" if gameplayObject.nextAction == gameplayObject.userOneId else "B"
+        actionMarker = "A1" if gameplayObject.nextAction == gameplayObject.userOneId else "B1"
+
+        if gameplayObject.gameplay[int(actionPosition) - 1] != "":
+            raise Exception(ExceptionLogCodes.INCORRECT_EVENT_CASE.value) 
+
+        for pos, el in enumerate(gameplayObject.gameplay):
+            if el.startswith("A") and actionUserType == "A":
+                if el == "A1":
+                    gameplayObject.gameplay[pos] = "A2"
+                elif el == "A2":
+                    gameplayObject.gameplay[pos] = "A3"
+                elif el == "A3":
+                    gameplayObject.gameplay[pos] = "A4"
+                elif el == "A4":
+                    gameplayObject.gameplay[pos] = ""
+            elif el.startswith("B") and actionUserType == "B":
+                if el == "B1":
+                    gameplayObject.gameplay[pos] = "B2"
+                elif el == "B2":
+                    gameplayObject.gameplay[pos] = "B3"
+                elif el == "B3":
+                    gameplayObject.gameplay[pos] = "B4"
+                elif el == "B4":
+                    gameplayObject.gameplay[pos] = ""
+
+        gameplayObject.gameplay[int(actionPosition) - 1] = actionMarker
+
+        if  (gameplayObject.gameplay[0].startswith(actionUserType) and gameplayObject.gameplay[1].startswith(actionUserType) and gameplayObject.gameplay[2].startswith(actionUserType)) or \
+            (gameplayObject.gameplay[3].startswith(actionUserType) and gameplayObject.gameplay[4].startswith(actionUserType) and gameplayObject.gameplay[5].startswith(actionUserType)) or \
+            (gameplayObject.gameplay[6].startswith(actionUserType) and gameplayObject.gameplay[7].startswith(actionUserType) and gameplayObject.gameplay[8].startswith(actionUserType)) or \
+            (gameplayObject.gameplay[0].startswith(actionUserType) and gameplayObject.gameplay[3].startswith(actionUserType) and gameplayObject.gameplay[6].startswith(actionUserType)) or \
+            (gameplayObject.gameplay[1].startswith(actionUserType) and gameplayObject.gameplay[4].startswith(actionUserType) and gameplayObject.gameplay[7].startswith(actionUserType)) or \
+            (gameplayObject.gameplay[2].startswith(actionUserType) and gameplayObject.gameplay[5].startswith(actionUserType) and gameplayObject.gameplay[8].startswith(actionUserType)) or \
+            (gameplayObject.gameplay[0].startswith(actionUserType) and gameplayObject.gameplay[4].startswith(actionUserType) and gameplayObject.gameplay[8].startswith(actionUserType)) or \
+            (gameplayObject.gameplay[2].startswith(actionUserType) and gameplayObject.gameplay[4].startswith(actionUserType) and gameplayObject.gameplay[6].startswith(actionUserType)):
 
             gameplayObject.result = gameplayObject.nextAction
             gameplayObject.status = GameplayStatus.CLOSED.value
-
-        gameplayObject.gameplay = gameplay
-        gameplayObject.nextAction = gameplayObject.userTwoId if gameplayObject.nextAction == gameplayObject.userOneId else gameplayObject.userOneId
+            gameplayObject.nextAction = None
+        else:
+            gameplayObject.nextAction = gameplayObject.userTwoId if gameplayObject.nextAction == gameplayObject.userOneId else gameplayObject.userOneId
 
         return gameplayObject
 
@@ -89,4 +117,4 @@ class GameplayHelper:
         decodedBytes = base64.urlsafe_b64decode(encodedBytes)
         decodedString = decodedBytes.decode('utf-8')
         return decodedString
-        
+         
