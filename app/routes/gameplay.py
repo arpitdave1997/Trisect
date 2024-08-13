@@ -1,4 +1,3 @@
-import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.common.enums import GameplayEvents, GameplayType, GameplayStatus, ExceptionLogCodes
 from app.common.constants import GameplaySessionObject, BOT_USER_ID, OFFLINE_USER_ID
@@ -50,7 +49,7 @@ class GameplayHandler:
             case GameplayType.TWO_VS_OFFLINE.value:
                 gameplayObject.userTwoId = GameplayHelper.encodeUserId(OFFLINE_USER_ID)
             case GameplayType.TWO_VS_ONLINE.value:
-                pass
+                gameplayObject.userTwoId = GameplayHelper.encodeUserId(OFFLINE_USER_ID)
             case GameplayType.TWO_VS_RANDOM.value:
                 pass
         

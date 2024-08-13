@@ -1,6 +1,8 @@
 import base64
+from datetime import datetime
+import random
 from app.database.supabase import Supabase
-from app.common.constants import GameplaySessionObject
+from app.common.constants import ADJ, NOUNS, GameplaySessionObject, UserObject
 from app.common.enums import GameplayStatus, ExceptionLogCodes
 
 dbClient = Supabase.initialize()
@@ -10,7 +12,7 @@ class GameplayHelper:
     @staticmethod
     def createSession(gameplayObject: GameplaySessionObject):
         dbResponse = dbClient.table('gameplay').insert(gameplayObject.toDbObject()).execute()
-        if dbResponse.count == 0:
+        if not dbResponse.data:
             raise Exception(ExceptionLogCodes.EXCEPTION_CREATE_SESSION.value)
         
         return dbResponse.data[0]['session_id']
@@ -18,7 +20,7 @@ class GameplayHelper:
     @staticmethod
     def updateSession(gameplayObject: GameplaySessionObject):
         dbResponse = dbClient.table('gameplay').update(gameplayObject.toDbObject()).eq('session_id', gameplayObject.sessionId).execute()
-        if dbResponse.count == 0:
+        if not dbResponse.data:
             raise Exception(ExceptionLogCodes.EXCEPTION_UPDATE_SESSION.value)
         
         return
@@ -32,7 +34,7 @@ class GameplayHelper:
             raise Exception(ExceptionLogCodes.INCORRECT_SESSION_ID.value)
         
         dbResponse = dbClient.table('gameplay').select('*').eq('session_id', sessionId).execute()
-        if dbResponse.count == 0:
+        if not dbResponse.data:
             raise Exception(ExceptionLogCodes.INCORRECT_SESSION_ID.value)
         
         gameplayObject: GameplaySessionObject = GameplayHelper.mapGameplayObject(dbResponse.data[0])
@@ -118,3 +120,78 @@ class GameplayHelper:
         decodedString = decodedBytes.decode('utf-8')
         return decodedString
          
+class UsersHelper:
+
+    @staticmethod
+    def fetchUserInfo(deviceIdentifier: str):
+        dbResponse = dbClient.table('users').select('*').eq('device_identifier', deviceIdentifier).execute()
+        if not dbResponse.data:
+            return False, None
+
+        userObject = UsersHelper.mapUserObject(dbResponse.data[0])
+        return True, userObject
+
+    @staticmethod
+    def createUser(deviceIdentifier: str):
+        userObject: UserObject = UserObject(
+            user_id = UsersHelper.encodeUserId(deviceIdentifier),
+            user_name = UsersHelper.generateUserName(),
+            device_identifier = deviceIdentifier,
+            ip_address = None,
+            online_status = True,
+            last_online_timestamp = str(datetime.now())
+        )
+
+        dbResponse = dbClient.table('users').insert(userObject.toDbObject()).execute()
+        if not dbResponse.data:
+            raise Exception(ExceptionLogCodes.EXCEPTION_CREATE_SESSION.value)
+
+        return userObject
+
+    @staticmethod
+    def generateUserName():
+        adjective = random.choice(ADJ)
+        noun = random.choice(NOUNS)
+        
+        username = f"{adjective}{noun}"
+        return username
+
+    @staticmethod
+    def updateUserActivity(userId: str):
+        dbResponse = dbClient.table('users').select('*').eq('user_id', userId).execute()
+        if not dbResponse.data:
+            return False
+    
+        dbResponse = dbClient.table('users').update({'last_online_timestamp': str(datetime.now())}).eq('user_id', userId).execute()
+        if not dbResponse.data:
+            return False
+        
+        return True
+        
+    @staticmethod
+    def mapUserObject(dbData: dict):
+        userObject: UserObject = UserObject(
+            user_id = dbData.get('user_id'),
+            user_name = dbData.get('user_name'),
+            device_identifier = dbData.get('device_identifier'),
+            ip_address = dbData.get('ip_address'),
+            online_status = dbData.get('online_status'),
+            last_online_timestamp = dbData.get('last_online_timestamp')
+        )
+
+        return userObject    
+
+    @staticmethod
+    def encodeUserId(deviceIdentifier: str):
+        inputBytes = deviceIdentifier.encode('utf-8')
+        encodedBytes = base64.urlsafe_b64encode(inputBytes)
+        encodedString = encodedBytes.decode('utf-8')
+        return encodedString 
+       
+    @staticmethod
+    def decodeUserId(deviceHash: str):
+        encodedBytes = deviceHash.encode('utf-8')
+        decodedBytes = base64.urlsafe_b64decode(encodedBytes)
+        decodedString = decodedBytes.decode('utf-8')
+        return decodedString
+
