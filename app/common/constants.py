@@ -1,11 +1,19 @@
 from datetime import datetime
 from app.common.enums import GameplayType, GameplayStatus
 
-BOT_USER_ID = 'BOT'
+ORIGINS = [
+    "http://127.0.0.1:5501",
+    "http://localhost:5501",
+]
+
+BOT_USER_ID = 'BOT_USER'
 OFFLINE_USER_ID = 'OFFLINE'
 
 ADJ = ["Brave", "Clever", "Witty", "Quick", "Bright", "Mighty", "Silent", "Swift", "Loyal", "Bold", "Sharp", "Eager", "Jolly", "Lucky", "Noble"]
 NOUNS = ["Panther", "Bear", "Falcon", "Wolf", "Lion", "Tiger", "Eagle", "Dragon", "Fox", "Leopard", "Shark", "Raven", "Hawk", "Python", "Knight"]
+
+SEARCH_OPEN_SESSION = 3
+SEARCH_CREATE_SESSION = 7
 
 class GameplaySessionObject:
     def __init__(
@@ -13,7 +21,7 @@ class GameplaySessionObject:
             sessionId = None,
             userOneId = None,
             userTwoId = None,
-            type = GameplayType.TWO_VS_OFFLINE.value,
+            type = GameplayType.TWO_VS_RANDOM.value,
             gameplay = ['', '', '', '', '', '', '', '', ''],
             status = GameplayStatus.EXPIRED.value,
             result = None,

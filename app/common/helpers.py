@@ -1,21 +1,85 @@
 import base64
-from datetime import datetime
+import time
 import random
+from datetime import datetime 
 from app.database.supabase import Supabase
-from app.common.constants import ADJ, NOUNS, GameplaySessionObject, UserObject
-from app.common.enums import GameplayStatus, ExceptionLogCodes
+from app.common.constants import ADJ, BOT_USER_ID, NOUNS, SEARCH_CREATE_SESSION, SEARCH_OPEN_SESSION, GameplaySessionObject, UserObject
+from app.common.enums import GameplayStatus, ExceptionLogCodes, GameplayType
 
 dbClient = Supabase.initialize()
 
 class GameplayHelper:
 
     @staticmethod
-    def createSession(gameplayObject: GameplaySessionObject):
+    def searchOpenSessions(userId: str):
+        for waitTime in range(SEARCH_OPEN_SESSION):
+            time.sleep(1)
+            dbResponse = dbClient.table('gameplay').select('*').is_("user_two", None).neq("user_one", userId).execute()
+            if dbResponse.data:
+                break
+
+        if not dbResponse.data:
+            return False, None
+            
+        gameplayObject = GameplayHelper.mapGameplayObject(dbResponse.data[0])
+        gameplayObject.userTwoId = userId
+        dbResponse = dbClient.table('gameplay').update(gameplayObject.toDbObject()).eq('session_id', gameplayObject.sessionId).execute()
+        if not dbResponse.data:
+            raise Exception(ExceptionLogCodes.EXCEPTION_UPDATE_SESSION.value)
+
+        return True, gameplayObject.toJson()
+    
+    @staticmethod
+    def createOpenSession(userId: str):
+        gameplayObject: GameplaySessionObject = GameplaySessionObject(
+            sessionId = None,
+            userOneId = userId,
+            userTwoId = None,
+            type = GameplayType.TWO_VS_RANDOM.value,
+            gameplay = ['', '', '', '', '', '', '', '', ''],
+            status = GameplayStatus.OPEN.value,
+            result = None,
+            nextAction = userId,
+            lastUpdated = str(datetime.now())            
+        )
+
         dbResponse = dbClient.table('gameplay').insert(gameplayObject.toDbObject()).execute()
         if not dbResponse.data:
-            raise Exception(ExceptionLogCodes.EXCEPTION_CREATE_SESSION.value)
-        
-        return dbResponse.data[0]['session_id']
+            raise Exception(ExceptionLogCodes.EXCEPTION_UPDATE_SESSION.value)
+        else:
+            sessionId = dbResponse.data[0].get('session_id')
+
+            for waitTime in range(SEARCH_CREATE_SESSION):
+                time.sleep(1)
+                dbResponse = dbClient.table('gameplay').select('*').eq('session_id', sessionId).execute()
+                if not dbResponse.data:
+                    return False, None
+                elif dbResponse.data[0].get('user_two') != None:
+                    break
+
+            if dbResponse.data[0].get('user_two') != None:
+                return True, GameplayHelper.mapGameplayObject(dbResponse).toJson()
+            else:
+                dbResponse = dbClient.table('gameplay').delete().eq('session_id', sessionId).execute()
+                return False, None
+
+    @staticmethod
+    def createBotSession(userId: str):
+        gameplayObject: GameplaySessionObject = GameplaySessionObject(
+            sessionId = None,
+            userOneId = userId,
+            userTwoId = GameplayHelper.encodeUserId(BOT_USER_ID),
+            type = GameplayType.TWO_VS_BOT.value,
+            gameplay = ['', '', '', '', '', '', '', '', ''],
+            status = GameplayStatus.OPEN.value,
+            result = None,
+            nextAction = userId,
+            lastUpdated = str(datetime.now())            
+        )
+        dbResponse = dbClient.table('gameplay').insert(gameplayObject.toDbObject()).execute()
+        if not dbResponse.data:
+            raise Exception(ExceptionLogCodes.EXCEPTION_UPDATE_SESSION.value)
+        return True, GameplayHelper.mapGameplayObject(dbResponse.data[0]).toJson()
         
     @staticmethod
     def updateSession(gameplayObject: GameplaySessionObject):
