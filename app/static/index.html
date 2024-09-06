@@ -7,12 +7,16 @@
     <link rel="stylesheet" href="./css/index.css">
 </head>
 <body>
-    <div id="menu">
-        <h1>Welcome to Tic Tac Toe</h1>
-        <button id="playNow">Play Now</button>
+    <div id="loading">
+        <h1>Please wait</h1>
     </div>
 
-    <div id="game">
+    <div id="menu" style="display:none;">
+        <h1>Welcome to Tic Tac Toe</h1>
+        <button id="play-now">Play Now</button>
+    </div>
+
+    <div id="game" style="display:none;">
         <h2>Tic Tac Toe</h2>
         <div class="grid" id="tictactoeGrid">
             <div class="cell" data-index="0"></div>
@@ -25,6 +29,15 @@
             <div class="cell" data-index="7"></div>
             <div class="cell" data-index="8"></div>
         </div>
+    </div>
+
+    <div id="error" style="display:none;">
+        <h1 id="error-message"></h1>
+    </div>
+
+    <div id="result" style="display:none;">
+        <h1 id="result-message"></h1>
+        <button id="restart">Play Now</button>
     </div>
 
     <script src="./js/index.js"></script>

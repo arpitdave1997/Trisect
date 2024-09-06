@@ -8,7 +8,7 @@ body {
     background-color: #f0f0f0;
 }
 
-#menu, #game {
+#menu, #game, #loading, #error, #result {
     text-align: center;
 }
 
@@ -27,10 +27,6 @@ body {
     background-color: #28a745;
     color: white;
     margin-top: 20px;
-}
-
-#game {
-    display: none;
 }
 
 .grid {
