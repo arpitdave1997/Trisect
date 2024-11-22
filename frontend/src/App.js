@@ -1,11 +1,10 @@
 import './App.css';
-import Trisect from './Components/Trisect/trisect';
+import XAndO from './Components/XAndO/xando';
 
 function App() {
   return (
     <div>
-      <Trisect/>
-      
+      <XAndO/>
     </div>
   );
 }
